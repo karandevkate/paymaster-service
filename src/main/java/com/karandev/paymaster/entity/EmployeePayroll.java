@@ -1,0 +1,77 @@
+package com.karandev.paymaster.entity;
+
+import jakarta.persistence.*;
+import lombok.Data;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+@Entity
+@Table(name = "employee_payroll")
+@Data
+public class EmployeePayroll {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    @Column()
+    private UUID payRollId;
+
+    @ManyToOne
+    @JoinColumn(name = "company_id", nullable = false)
+    private Company company;
+
+    @ManyToOne
+    @JoinColumn(name = "employee_id", nullable = false)
+    private Employee employee;
+
+    private Integer month;
+    private Integer year;
+
+    @Column(precision = 19, scale = 2)
+    private BigDecimal grossSalary;
+
+    @Column(precision = 19, scale = 2)
+    private BigDecimal pfAmount;
+
+    @Column(precision = 19, scale = 2)
+    private BigDecimal hra;
+
+    @Column(precision = 19, scale = 2)
+    private BigDecimal da;
+
+    @Column(precision = 19, scale = 2)
+    private BigDecimal specialAllowance;
+
+    @Column(precision = 19, scale = 2)
+    private BigDecimal professionalTaxAmount;
+
+    @Column(precision = 19, scale = 2)
+    private BigDecimal incomeTaxAmount;
+
+    @Column(precision = 19, scale = 2)
+    private BigDecimal lopDeduction;
+
+    @Column(precision = 19, scale = 2)
+    private BigDecimal netSalary;
+
+    private LocalDateTime generatedAt;
+
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onGenerate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = createdAt;
+
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
+
+
+}
+
