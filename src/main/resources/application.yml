@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/payroll_db?createDatabaseIfNotExist=true&serverTimezone=UTC
+    url: jdbc:mysql://paymaster-mysql:3306/payroll_db?createDatabaseIfNotExist=true&serverTimezone=UTC
     username: root
     password: admin
     driver-class-name: com.mysql.cj.jdbc.Driver
