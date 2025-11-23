@@ -5,6 +5,7 @@ import com.karandev.paymaster.repository.EmployeeRepository;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.activation.DataSource;
 import jakarta.mail.util.ByteArrayDataSource;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -24,6 +25,9 @@ public class EmailService {
         this.mailSender = mailSender;
         this.employeeRepository = employeeRepository;
     }
+
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
 
     public void sendSalarySlip(
             String toEmail,
@@ -62,7 +66,7 @@ public class EmailService {
 
         employeeRepository.save(employee);
 
-        String setPasswordUrl = "http://localhost:3000/set-password?token=" + token;
+        String setPasswordUrl = frontendUrl + "/set-password?token=" + token;
 
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(employee.getEmail());

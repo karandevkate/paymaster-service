@@ -2,8 +2,7 @@ package com.karandev.paymaster.controller;
 
 import com.karandev.paymaster.dto.EmployeePayrollResponseDto;
 import com.karandev.paymaster.service.EmployeePayrollService;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 

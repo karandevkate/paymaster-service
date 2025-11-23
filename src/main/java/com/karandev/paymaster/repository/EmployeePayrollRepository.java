@@ -16,4 +16,7 @@ public interface EmployeePayrollRepository extends JpaRepository<EmployeePayroll
 
     List<EmployeePayroll> findByEmployee_EmployeeIdAndMonthAndYear(UUID employeeId, int month, int year);
     Optional<EmployeePayroll> findByEmployee_EmployeeIdAndMonthAndYear(UUID employeeId, Integer month, Integer year);
+
+    boolean existsByEmployee_EmployeeIdAndMonthAndYear(UUID employeeId, int month, int year);
+
 }

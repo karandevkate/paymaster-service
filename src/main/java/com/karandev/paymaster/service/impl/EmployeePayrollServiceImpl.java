@@ -108,68 +108,84 @@ public class EmployeePayrollServiceImpl implements EmployeePayrollService {
     }
 
     @Override
-    @Scheduled(initialDelay = 1000, fixedDelay = Long.MAX_VALUE)
+//    @Scheduled(initialDelay = 1000, fixedDelay = Long.MAX_VALUE)
+    @Scheduled(cron = "*/30 * * * * *")
     public void createEmployeePayrollByCompanyId() throws IOException {
         log.info("Starting payroll generation for all companies at {}", LocalDateTime.now());
 
+        int currentMonth = LocalDate.now().getMonthValue();
+        int currentYear = LocalDate.now().getYear();
+
         List<Company> companies = companyRepository.findAll();
-        log.info("Found {} companies", companies.size());
+        log.info("Found {} companies to process", companies.size());
 
         for (Company company : companies) {
             UUID companyId = company.getCompanyId();
             log.info("Processing company: {} ({})", companyId, company.getName());
 
-            List<Employee> employees = employeeRepository.findAllByCompany_CompanyId(companyId);
-            log.info("Found {} employees for company {}", employees.size(), company.getName());
+            PayrollConfiguration config = payrollConfigurationRepository
+                    .findByCompany_CompanyId(companyId)
+                    .orElseGet(() -> {
+                        log.error("Skipping company {} - Payroll configuration not found", company.getName());
+                        return null;
+                    });
 
-            PayrollConfiguration config;
-            try {
-                config = payrollConfigurationRepository.findByCompany_CompanyId(companyId)
-                        .orElseThrow(() -> new RuntimeException("Payroll config not found for company " + companyId));
-            } catch (Exception e) {
-                log.error("Skipping company {} due to missing payroll configuration", company.getName(), e);
+            if (config == null) {
                 continue;
             }
 
+            List<Employee> employees = employeeRepository.findAllByCompany_CompanyId(companyId);
+            log.info("Found {} employees for company {}", employees.size(), company.getName());
+
             for (Employee employee : employees) {
+                try {
+                    boolean alreadyExists = employeePayrollRepository
+                            .existsByEmployee_EmployeeIdAndMonthAndYear(
+                                    employee.getEmployeeId(), currentMonth, currentYear);
 
-                    int currentMonth = 11;
-                    int currentYear = LocalDate.now().getYear();
-
-                    List<EmployeePayroll> existingPayrolls =
-                            employeePayrollRepository.findByEmployee_EmployeeIdAndMonthAndYear(
-                                    employee.getEmployeeId(), currentMonth, currentYear
-                            );
-
-
-                    if (!existingPayrolls.isEmpty()) {
-                        throw new PayrollAlreadyExistsException("Payroll already exists for company "
-                                + company.getName() + " for " + currentMonth + "-" + currentYear);
-                    }
-
-
-                    EmployeeSalaryStructure salaryStructure = employeeSalaryStructureRepository
-                            .findByEmployee_EmployeeIdAndCompany_CompanyId(employee.getEmployeeId(), companyId)
-                            .orElseThrow(() -> new RuntimeException("Salary Structure missing for employee " + employee.getEmployeeId()));
-
-                    BigDecimal gross = salaryStructure.getGrossSalary();
-                    if (gross == null) {
-                        log.warn("Skipping employee {} due to null gross salary", employee.getEmployeeId());
+                    if (alreadyExists) {
+                        log.info("Payroll already generated for employee {} ({}) for {}-{} Skipping.",
+                                employee.getEmployeeId(), employee.getName(), currentMonth, currentYear);
                         continue;
                     }
 
-                    BigDecimal pf =  salaryStructure.getBasicSalary().multiply(config.getPfPercentage().divide(new BigDecimal("100")));
-                    BigDecimal hraAmount =  salaryStructure.getBasicSalary().multiply(config.getHraPercentage().divide(new BigDecimal("100")));
-                    BigDecimal daAmount =  salaryStructure.getBasicSalary().multiply(config.getDaPercentage().divide(new BigDecimal("100")));
-                    BigDecimal specialAllowanceAmount = salaryStructure.getSpecialAllowance();
+                    EmployeeSalaryStructure salaryStructure = employeeSalaryStructureRepository
+                            .findByEmployee_EmployeeIdAndCompany_CompanyId(employee.getEmployeeId(), companyId)
+                            .orElseThrow(() -> new RuntimeException(
+                                    "Salary structure not found for employee: " + employee.getEmployeeId()));
 
-                    BigDecimal professionalTax = BigDecimal.valueOf(200);
+                    BigDecimal gross = salaryStructure.getGrossSalary();
+                    if (gross == null || gross.compareTo(BigDecimal.ZERO) <= 0) {
+                        log.warn("Skipping employee {} - Invalid or null gross salary", employee.getEmployeeId());
+                        continue;
+                    }
+
+                    BigDecimal basic = salaryStructure.getBasicSalary();
+
+                    BigDecimal pf = basic.multiply(config.getPfPercentage())
+                            .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+
+                    BigDecimal hraAmount = basic.multiply(config.getHraPercentage())
+                            .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+
+                    BigDecimal daAmount = basic.multiply(config.getDaPercentage())
+                            .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+
+                    BigDecimal specialAllowanceAmount = salaryStructure.getSpecialAllowance() != null
+                            ? salaryStructure.getSpecialAllowance() : BigDecimal.ZERO;
+
+                    BigDecimal professionalTax = BigDecimal.valueOf(200); // Make configurable if needed
+
                     BigDecimal yearlyGross = gross.multiply(BigDecimal.valueOf(12));
-                    BigDecimal incomeTax = calculateIncomeTax(yearlyGross, config)
+                    BigDecimal incomeTaxMonthly = calculateIncomeTax(yearlyGross, config)
                             .divide(BigDecimal.valueOf(12), 2, RoundingMode.HALF_UP);
-                    BigDecimal netSalary = gross.subtract(pf).subtract(professionalTax).subtract(incomeTax);
 
-                    EmployeePayroll payroll = new EmployeePayroll(); // fresh instance
+                    BigDecimal netSalary = gross
+                            .subtract(pf)
+                            .subtract(professionalTax)
+                            .subtract(incomeTaxMonthly);
+
+                    EmployeePayroll payroll = new EmployeePayroll();
                     payroll.setCompany(company);
                     payroll.setEmployee(employee);
                     payroll.setMonth(currentMonth);
@@ -180,32 +196,40 @@ public class EmployeePayrollServiceImpl implements EmployeePayrollService {
                     payroll.setDa(daAmount);
                     payroll.setSpecialAllowance(specialAllowanceAmount);
                     payroll.setProfessionalTaxAmount(professionalTax);
-                    payroll.setIncomeTaxAmount(incomeTax);
+                    payroll.setIncomeTaxAmount(incomeTaxMonthly);
                     payroll.setLopDeduction(BigDecimal.ZERO);
                     payroll.setNetSalary(netSalary);
                     payroll.setGeneratedAt(LocalDateTime.now());
 
-                 EmployeePayroll employeePayroll=   employeePayrollRepository.save(payroll);
+                    EmployeePayroll savedPayroll = employeePayrollRepository.save(payroll);
 
-                byte[] pdfBytes = pdfGenerationService.generateSalarySlipPdf(employeePayroll);
+                    byte[] pdfBytes = pdfGenerationService.generateSalarySlipPdf(savedPayroll);
 
-                // --- 3. Send Email ---
-                String filename = String.format("SalarySlip_%s_%d_%d.pdf", employee.getEmpCode(), currentMonth, currentYear);
-                String subject = String.format("%s Salary Slip for %d/%d", company.getName(), currentMonth, currentYear);
-                String body = String.format("Dear %s,<br><br>Please find your salary slip attached for %d/%d. This is an automated email.<br><br>Regards,<br>%s Payroll Team",
-                        employee.getName(), currentMonth, currentYear, company.getName());
+                    String filename = String.format("SalarySlip_%s_%02d_%d.pdf",
+                            employee.getEmpCode(), currentMonth, currentYear);
 
-                // Assuming employee.getEmail() is correct and defined
-                emailService.sendSalarySlip(employee.getEmail(), subject, body, pdfBytes, filename);
+                    String subject = String.format("%s - Salary Slip for %02d/%d",
+                            company.getName(), currentMonth, currentYear);
 
-                log.info("Payroll generated and email sent for employee {} in company {}", employee.getEmployeeId(), company.getName());
+                    String body = String.format(
+                            "Dear %s,<br><br>Please find attached your salary slip for <b>%02d/%d</b>.<br><br>" +
+                                    "This is an auto-generated email. Please do not reply.<br><br>Regards,<br><b>%s Payroll Team</b>",
+                            employee.getName(), currentMonth, currentYear, company.getName());
 
+                    emailService.sendSalarySlip(employee.getEmail(), subject, body, pdfBytes, filename);
+
+                    log.info("Successfully generated payroll and sent salary slip for employee: {} ({})",
+                            employee.getEmployeeId(), employee.getName());
+
+                } catch (Exception e) {
+                    log.error("Failed to process payroll for employee {} in company {} for {}-{}",
+                            employee.getEmployeeId(), company.getName(), currentMonth, currentYear, e);
+                }
             }
-
         }
 
+        log.info("Payroll generation completed at {}", LocalDateTime.now());
     }
-
 
     private BigDecimal calculateIncomeTax(BigDecimal yearlyIncome, PayrollConfiguration config) {
         BigDecimal tax = BigDecimal.ZERO;
