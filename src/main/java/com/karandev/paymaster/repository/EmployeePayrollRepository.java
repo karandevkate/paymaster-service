@@ -2,6 +2,8 @@ package com.karandev.paymaster.repository;
 
 import com.karandev.paymaster.entity.EmployeePayroll;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -14,9 +16,10 @@ public interface EmployeePayrollRepository extends JpaRepository<EmployeePayroll
     List<EmployeePayroll> findByCompany_CompanyIdOrderByYearDescMonthDesc(UUID companyId);
     List<EmployeePayroll> findByEmployee_EmployeeIdAndCompany_CompanyIdOrderByYearDescMonthDesc(UUID employeeId, UUID companyId);
 
-    List<EmployeePayroll> findByEmployee_EmployeeIdAndMonthAndYear(UUID employeeId, int month, int year);
-    Optional<EmployeePayroll> findByEmployee_EmployeeIdAndMonthAndYear(UUID employeeId, Integer month, Integer year);
 
     boolean existsByEmployee_EmployeeIdAndMonthAndYear(UUID employeeId, int month, int year);
+
+
+
 
 }

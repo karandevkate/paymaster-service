@@ -2,6 +2,8 @@ package com.karandev.paymaster.controller;
 
 import com.karandev.paymaster.dto.EmployeeRequestDto;
 import com.karandev.paymaster.dto.EmployeeResponseDto;
+import com.karandev.paymaster.dto.EmployeeUpdateRequestDto;
+import com.karandev.paymaster.helper.EmailService;
 import com.karandev.paymaster.service.EmployeeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,11 +19,13 @@ import java.util.UUID;
 public class EmployeeController {
 
     private final EmployeeService employeeService;
+    private final EmailService emailService;
     private static final Logger log = LoggerFactory.getLogger(EmployeeController.class);
 
     @Autowired
-    public EmployeeController(EmployeeService employeeService) {
+    public EmployeeController(EmployeeService employeeService, EmailService emailService) {
         this.employeeService = employeeService;
+        this.emailService = emailService;
     }
 
     @PostMapping
@@ -49,7 +53,7 @@ public class EmployeeController {
     }
 
     @PutMapping("/{employeeId}")
-    public ResponseEntity<String> updateEmployee(@PathVariable UUID employeeId, @RequestBody EmployeeRequestDto dto) {
+    public ResponseEntity<String> updateEmployee(@PathVariable UUID employeeId, @RequestBody EmployeeUpdateRequestDto dto) {
         log.info("Updating employee with ID: {}", employeeId);
         employeeService.updateEmployee(employeeId, dto);
         log.info("Employee updated successfully: {}",employeeId);
@@ -82,11 +86,17 @@ public class EmployeeController {
         return ResponseEntity.ok("Password set successfully!");
     }
 
-//    @PostMapping("/send")
-//    public ResponseEntity<String> sendSetPasswordEmail(@RequestParam UUID employeeId) {
-//        log.info("Sending set-password email to employeeId: {}", employeeId);
-//        employeeService.sendSetPasswordEmail(employeeId);
-//        log.info("Set-password email sent to employeeId: {}", employeeId);
-//        return ResponseEntity.ok("Set-password email sent!");
-//    }
+    @PostMapping("/send-passwordreset")
+    public ResponseEntity<String> sendSetPasswordEmail(@RequestParam UUID employeeId) {
+        log.info("Sending set-password email to employeeId: {}", employeeId);
+        emailService.sendSetPasswordEmail(employeeId);
+        log.info("Set-password email sent to employeeId: {}", employeeId);
+        return ResponseEntity.ok("Set-password email sent!");
+    }
+
+    @PatchMapping("/{employeeId}/deactivate")
+    public ResponseEntity<?> deactivate(@PathVariable UUID employeeId) {
+        employeeService.deactivateEmployee(employeeId);
+        return ResponseEntity.ok("Employee deactivated successfully");
+    }
 }

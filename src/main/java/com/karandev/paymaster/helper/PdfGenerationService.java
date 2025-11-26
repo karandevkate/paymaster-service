@@ -1,222 +1,311 @@
 package com.karandev.paymaster.helper;
+
+import com.karandev.paymaster.entity.EmployeePayroll;
 import com.karandev.paymaster.repository.EmployeePayrollRepository;
 import com.lowagie.text.*;
-import com.lowagie.text.Font;
-import com.lowagie.text.Rectangle;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
-import com.karandev.paymaster.entity.EmployeePayroll;
-
 import org.springframework.stereotype.Service;
 
-import java.awt.*;
+import java.awt.Color;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.text.NumberFormat;
+import java.time.Month;
 import java.util.Locale;
-import java.util.UUID;
 
 @Service
 public class PdfGenerationService {
 
-
     private final EmployeePayrollRepository payrollRepository;
+
+    // Modern Color Scheme
+    private static final Color PRIMARY_COLOR = new Color(41, 128, 185);
+    private static final Color SECONDARY_COLOR = new Color(52, 73, 94);
+    private static final Color EARNINGS_COLOR = new Color(39, 174, 96);      // Green
+    private static final Color DEDUCTIONS_COLOR = new Color(231, 76, 60);    // Red
+    private static final Color NET_SALARY_COLOR = new Color(22, 160, 133);   // Teal
+    private static final Color TOTAL_ROW_BG = new Color(236, 240, 241);      // Light Grey
+    private static final Color LABEL_COLOR = new Color(44, 62, 80);          // Dark Grey
+
+    private static final NumberFormat INR = NumberFormat.getCurrencyInstance(new Locale("en", "IN"));
+
+    // Fonts
+    private static final Font COMPANY_FONT = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 22, PRIMARY_COLOR);
+    private static final Font TITLE_FONT = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16, SECONDARY_COLOR);
+    private static final Font SUBTITLE_FONT = FontFactory.getFont(FontFactory.HELVETICA, 10, new Color(127, 140, 141));
+    private static final Font LABEL_FONT = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, LABEL_COLOR);
+    private static final Font VALUE_FONT = FontFactory.getFont(FontFactory.HELVETICA, 10, Color.BLACK);
+    private static final Font HEADER_FONT = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 11, Color.WHITE);
+    private static final Font TOTAL_FONT = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 11, LABEL_COLOR);
+    private static final Font NET_PAY_FONT = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14, Color.WHITE);
 
     public PdfGenerationService(EmployeePayrollRepository payrollRepository) {
         this.payrollRepository = payrollRepository;
     }
 
-    public EmployeePayroll getPayrollData(UUID employeeId, Integer month, Integer year) {
-        return payrollRepository.findByEmployee_EmployeeIdAndMonthAndYear(employeeId, month, year)
-                .orElseThrow(() -> new RuntimeException(
-                        String.format("Payroll record not found for Employee ID: %s, Month: %d, Year: %d",
-                                employeeId, month, year)
-                ));
-    }
-
-    private static final Font TITLE_FONT = new Font(Font.HELVETICA, 16, Font.BOLD, new Color(0, 0, 0));
-    private static final Font HEADER_FONT = new Font(Font.HELVETICA, 12, Font.BOLD, new Color(0, 0, 0));
-    private static final Font DATA_FONT = new Font(Font.HELVETICA, 10, Font.NORMAL, new Color(0, 0, 0));
-    private static final NumberFormat CURRENCY_FORMAT = NumberFormat.getCurrencyInstance(new Locale("en", "IN"));
-
-
-    public byte[] generateSalarySlipPdf(EmployeePayroll payroll) throws DocumentException, IOException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        Document document = new Document(PageSize.A4);
-        PdfWriter.getInstance(document, baos);
-
+    public byte[] generateSalarySlipPdf(EmployeePayroll p) throws DocumentException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        Document document = new Document(PageSize.A4, 40, 40, 60, 60);
+        PdfWriter.getInstance(document, out);
         document.open();
 
-        addCompanyHeader(document, payroll);
-
-        addEmployeeAndMonthDetails(document, payroll);
-
-        addEarningsAndDeductionsTable(document, payroll);
-
-        addNetSalarySummary(document, payroll);
+        addCompanyHeader(document, p);
+        addEmployeeInfo(document, p);
+        addEarningsAndDeductionsTable(document, p);
+        addNetPaySummary(document, p);
+        addFooterNote(document);
 
         document.close();
-        return baos.toByteArray();
+        return out.toByteArray();
     }
 
-    private void addCompanyHeader(Document document, EmployeePayroll payroll) throws DocumentException {
-        // Title: Company Name
-        Paragraph companyName = new Paragraph(payroll.getCompany().getName(), TITLE_FONT);
-        companyName.setAlignment(Element.ALIGN_CENTER);
-        document.add(companyName);
+    private void addCompanyHeader(Document doc, EmployeePayroll p) throws DocumentException {
+        // Company Name with colored background
+        PdfPTable headerTable = new PdfPTable(1);
+        headerTable.setWidthPercentage(100);
 
-        // Company Address
-        Paragraph address = new Paragraph(payroll.getCompany().getAddress(), DATA_FONT);
-        address.setAlignment(Element.ALIGN_CENTER);
-        document.add(address);
+        PdfPCell headerCell = new PdfPCell(new Phrase(p.getCompany().getName(), COMPANY_FONT));
+        headerCell.setBackgroundColor(new Color(236, 240, 241));
+        headerCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        headerCell.setPadding(15);
+        headerCell.setBorder(Rectangle.NO_BORDER);
+        headerTable.addCell(headerCell);
 
-        // Subtitle: Salary Slip
-        Paragraph subtitle = new Paragraph("SALARY SLIP", HEADER_FONT);
-        subtitle.setAlignment(Element.ALIGN_CENTER);
-        subtitle.setSpacingAfter(10);
-        document.add(subtitle);
+        doc.add(headerTable);
+
+        if (p.getCompany().getAddress() != null) {
+            Paragraph address = new Paragraph(p.getCompany().getAddress(), SUBTITLE_FONT);
+            address.setAlignment(Element.ALIGN_CENTER);
+            address.setSpacingBefore(8);
+            doc.add(address);
+        }
+
+        Paragraph title = new Paragraph(
+                "Salary Slip - " + Month.of(p.getMonth()).name().substring(0, 1).toUpperCase()
+                        + Month.of(p.getMonth()).name().substring(1).toLowerCase() + " " + p.getYear(),
+                TITLE_FONT
+        );
+        title.setAlignment(Element.ALIGN_CENTER);
+        title.setSpacingBefore(15);
+        title.setSpacingAfter(20);
+        doc.add(title);
     }
 
-    private void addEmployeeAndMonthDetails(Document document, EmployeePayroll payroll) throws DocumentException {
-        PdfPTable table = new PdfPTable(2); // Two columns for key-value pairs
+    private void addEmployeeInfo(Document doc, EmployeePayroll p) throws DocumentException {
+        PdfPTable table = new PdfPTable(4);
         table.setWidthPercentage(100);
+        table.setWidths(new float[]{25, 25, 25, 25});
         table.setSpacingBefore(10);
-        table.setSpacingAfter(10);
-        float[] columnWidths = {1f, 2f};
-        table.setWidths(columnWidths);
+        table.setSpacingAfter(20);
 
-        // Helper method to add a row (Key, Value)
-        addRow(table, "Employee Name:", payroll.getEmployee().getName());
-        addRow(table, "Employee Code:", payroll.getEmployee().getEmpCode());
-        addRow(table, "Designation:", payroll.getEmployee().getDesignation());
-        addRow(table, "Department:", payroll.getEmployee().getDepartment());
-        addRow(table, "Month/Year:", payroll.getMonth() + " / " + payroll.getYear());
+        addInfoCell(table, "Employee Name", p.getEmployee().getName());
+        addInfoCell(table, "Employee Code", p.getEmployee().getEmpCode());
+        addInfoCell(table, "Designation", p.getEmployee().getDesignation());
+        addInfoCell(table, "Department", nullSafe(p.getEmployee().getDepartment()));
 
-        document.add(table);
+        doc.add(table);
     }
 
-    // Helper method to create and add cells to a table
-    private void addRow(PdfPTable table, String key, String value) {
-        PdfPCell keyCell = new PdfPCell(new Phrase(key, HEADER_FONT));
-        keyCell.setBorder(Rectangle.NO_BORDER);
-        table.addCell(keyCell);
-
-        PdfPCell valueCell = new PdfPCell(new Phrase(value, DATA_FONT));
-        valueCell.setBorder(Rectangle.NO_BORDER);
-        table.addCell(valueCell);
-    }
-
-    private void addEarningsAndDeductionsTable(Document document, EmployeePayroll payroll) throws DocumentException {
-        PdfPTable table = new PdfPTable(4); // Earnings (2) and Deductions (2) columns
+    private void addEarningsAndDeductionsTable(Document doc, EmployeePayroll p) throws DocumentException {
+        PdfPTable table = new PdfPTable(4);
         table.setWidthPercentage(100);
+        table.setWidths(new float[]{35, 15, 35, 15});
         table.setSpacingBefore(10);
-        table.setSpacingAfter(10);
-        float[] columnWidths = {2f, 1.5f, 2f, 1.5f};
-        table.setWidths(columnWidths);
 
-        // Table Headers
-        addHeaderCell(table, "Earnings");
-        addHeaderCell(table, "Amount");
-        addHeaderCell(table, "Deductions");
-        addHeaderCell(table, "Amount");
+        // Header with modern colors
+        table.addCell(createHeaderCell("EARNINGS", EARNINGS_COLOR));
+        table.addCell(createHeaderCell("AMOUNT", EARNINGS_COLOR));
+        table.addCell(createHeaderCell("DEDUCTIONS", DEDUCTIONS_COLOR));
+        table.addCell(createHeaderCell("AMOUNT", DEDUCTIONS_COLOR));
 
-        // Data Rows
-        addDataRow(table, "Basic Pay", formatCurrency(payroll.getEmployee().getSalaryStructure().getBasicSalary()),
-                "PF Amount", formatCurrency(payroll.getPfAmount()));
-        addDataRow(table, "HRA", formatCurrency(payroll.getHra()),
-                "Professional Tax", formatCurrency(payroll.getProfessionalTaxAmount()));
-        addDataRow(table, "DA", formatCurrency(payroll.getDa()),
-                "Income Tax", formatCurrency(payroll.getIncomeTaxAmount()));
-        addDataRow(table, "Special Allowance", formatCurrency(payroll.getSpecialAllowance()),
-                "LOP Deduction", formatCurrency(payroll.getLopDeduction()));
+        // Rows
+        addRow(table, "Basic Salary", p.getBasicSalary(), "PF (Employee)", p.getPfEmployeeAmount());
+        addRow(table, "HRA", p.getHra(), "ESI (Employee)", p.getEsiEmployeeAmount());
+        addRow(table, "Conveyance Allowance", p.getConveyance(), "Professional Tax", p.getProfessionalTaxAmount());
+        addRow(table, "Medical Allowance", p.getMedicalAllowance(), "Income Tax (TDS)", p.getIncomeTaxAmount());
+        addRow(table, "Special Allowance", p.getSpecialAllowance(), "", null);
+        addRow(table, "Bonus", p.getBonusAmount(), "", null);
 
-        // Calculate Totals
-        BigDecimal totalEarnings = payroll.getGrossSalary();
-        BigDecimal totalDeductions = payroll.getPfAmount().add(payroll.getProfessionalTaxAmount()).add(payroll.getIncomeTaxAmount()).add(payroll.getLopDeduction());
+        // Total Row with modern styling
+        BigDecimal totalEarnings = p.getGrossSalary();
+        BigDecimal totalDeductions = p.getPfEmployeeAmount()
+                .add(nullSafe(p.getEsiEmployeeAmount()))
+                .add(p.getProfessionalTaxAmount())
+                .add(p.getIncomeTaxAmount());
 
-        // Total Row
-        addTotalRow(table, "Total Earnings", formatCurrency(totalEarnings),
-                "Total Deductions", formatCurrency(totalDeductions));
+        table.addCell(createTotalLabelCell("Gross Salary"));
+        table.addCell(createTotalAmountCell(formatCurrency(totalEarnings)));
+        table.addCell(createTotalLabelCell("Total Deductions"));
+        table.addCell(createTotalAmountCell(formatCurrency(totalDeductions)));
 
-        document.add(table);
+        doc.add(table);
     }
 
-    // Helper methods for the main table
-    private void addHeaderCell(PdfPTable table, String text) {
-        PdfPCell cell = new PdfPCell(new Phrase(text, HEADER_FONT));
-        cell.setHorizontalAlignment(Element.ALIGN_CENTER);
-        cell.setBackgroundColor(new Color(200, 200, 200));
-        cell.setPadding(5);
-        table.addCell(cell);
+    private void addRow(PdfPTable table, String earning, BigDecimal earnAmt,
+                        String deduction, BigDecimal dedAmt) {
+        table.addCell(createLabelCell(earning));
+        table.addCell(createAmountCell(formatCurrency(earnAmt)));
+
+        String dedLabel = deduction != null && !deduction.isEmpty() ? deduction : " ";
+        BigDecimal amt = dedAmt != null ? dedAmt : BigDecimal.ZERO;
+        table.addCell(createLabelCell(dedLabel));
+        table.addCell(createAmountCell(deduction != null && dedAmt != null ? formatCurrency(amt) : " "));
     }
 
-    private void addDataRow(PdfPTable table, String eName, String eAmount, String dName, String dAmount) {
-        table.addCell(new Phrase(eName, DATA_FONT));
-        table.addCell(createAmountCell(eAmount));
-        table.addCell(new Phrase(dName, DATA_FONT));
-        table.addCell(createAmountCell(dAmount));
-    }
-
-    private void addTotalRow(PdfPTable table, String eName, String eAmount, String dName, String dAmount) {
-        table.addCell(createBoldCell(eName));
-        table.addCell(createBoldAmountCell(eAmount));
-        table.addCell(createBoldCell(dName));
-        table.addCell(createBoldAmountCell(dAmount));
-    }
-
-    private PdfPCell createAmountCell(String amount) {
-        PdfPCell cell = new PdfPCell(new Phrase(amount, DATA_FONT));
-        cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
-        return cell;
-    }
-
-    private PdfPCell createBoldCell(String text) {
-        PdfPCell cell = new PdfPCell(new Phrase(text, HEADER_FONT));
-        return cell;
-    }
-
-    private PdfPCell createBoldAmountCell(String amount) {
-        PdfPCell cell = new PdfPCell(new Phrase(amount, HEADER_FONT));
-        cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
-        return cell;
-    }
-
-    private void addNetSalarySummary(Document document, EmployeePayroll payroll) throws DocumentException {
-        document.add(new Paragraph("\n"));
-
-        // Net Salary Box
+    private void addNetPaySummary(Document doc, EmployeePayroll p) throws DocumentException {
         PdfPTable table = new PdfPTable(2);
-        table.setWidthPercentage(50); // Make the net salary box smaller
+        table.setWidthPercentage(65);
         table.setHorizontalAlignment(Element.ALIGN_RIGHT);
-        float[] columnWidths = {2f, 1.5f};
-        table.setWidths(columnWidths);
+        table.setSpacingBefore(25);
+        table.setSpacingAfter(15);
 
-        PdfPCell netLabel = new PdfPCell(new Phrase("NET SALARY:", TITLE_FONT));
-        netLabel.setBackgroundColor(new Color(220, 220, 220));
-        netLabel.setPadding(8);
+        PdfPCell labelCell = new PdfPCell(new Phrase("NET SALARY PAYABLE", NET_PAY_FONT));
+        labelCell.setBackgroundColor(NET_SALARY_COLOR);
+        labelCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        labelCell.setPadding(14);
+        labelCell.setBorder(Rectangle.NO_BORDER);
+        table.addCell(labelCell);
 
-        PdfPCell netValue = new PdfPCell(new Phrase(formatCurrency(payroll.getNetSalary()), TITLE_FONT));
-        netValue.setHorizontalAlignment(Element.ALIGN_RIGHT);
-        netValue.setBackgroundColor(new Color(220, 220, 220));
-        netValue.setPadding(8);
+        PdfPCell amountCell = new PdfPCell(new Phrase(formatCurrency(p.getNetSalary()), NET_PAY_FONT));
+        amountCell.setBackgroundColor(NET_SALARY_COLOR);
+        amountCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        amountCell.setPadding(14);
+        amountCell.setBorder(Rectangle.NO_BORDER);
+        table.addCell(amountCell);
 
-        table.addCell(netLabel);
-        table.addCell(netValue);
-        document.add(table);
+        doc.add(table);
 
-        document.add(new Paragraph("\n"));
+        Paragraph inWords = new Paragraph(
+                "Amount in Words: " + toWords(p.getNetSalary()) + " Only",
+                FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, LABEL_COLOR)
+        );
+        inWords.setAlignment(Element.ALIGN_RIGHT);
+        inWords.setSpacingBefore(12);
+        doc.add(inWords);
+    }
 
-        // Footer/Disclaimer
-        Paragraph footer = new Paragraph("Generated on: " + payroll.getGeneratedAt().toLocalDate()
-                + ". This is a computer-generated statement.", DATA_FONT);
-        footer.setAlignment(Element.ALIGN_CENTER);
-        document.add(footer);
+    private void addFooterNote(Document doc) throws DocumentException {
+        Paragraph note = new Paragraph(
+                "This is a computer-generated salary slip and does not require a signature.",
+                FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 9, new Color(149, 165, 166))
+        );
+        note.setAlignment(Element.ALIGN_CENTER);
+        note.setSpacingBefore(35);
+        doc.add(note);
+    }
+
+    private void addInfoCell(PdfPTable table, String label, String value) {
+        table.addCell(createInfoLabelCell(label + ":"));
+        table.addCell(createInfoValueCell(nullSafe(value)));
+    }
+
+    private PdfPCell createInfoLabelCell(String text) {
+        PdfPCell cell = new PdfPCell(new Phrase(text, LABEL_FONT));
+        cell.setBorder(Rectangle.NO_BORDER);
+        cell.setPaddingBottom(10);
+        cell.setBackgroundColor(new Color(250, 250, 250));
+        cell.setPadding(8);
+        return cell;
+    }
+
+    private PdfPCell createInfoValueCell(String text) {
+        PdfPCell cell = new PdfPCell(new Phrase(text, VALUE_FONT));
+        cell.setBorder(Rectangle.NO_BORDER);
+        cell.setPaddingBottom(10);
+        cell.setPadding(8);
+        return cell;
+    }
+
+    private PdfPCell createHeaderCell(String text, Color bg) {
+        PdfPCell cell = new PdfPCell(new Phrase(text, HEADER_FONT));
+        cell.setBackgroundColor(bg);
+        cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        cell.setPadding(10);
+        cell.setBorder(Rectangle.NO_BORDER);
+        return cell;
+    }
+
+    private PdfPCell createLabelCell(String text) {
+        PdfPCell cell = new PdfPCell(new Phrase(text, VALUE_FONT));
+        cell.setPadding(8);
+        cell.setBorder(Rectangle.BOX);
+        cell.setBorderColor(new Color(189, 195, 199));
+        cell.setBorderWidth(0.5f);
+        return cell;
+    }
+
+    private PdfPCell createAmountCell(String text) {
+        PdfPCell cell = new PdfPCell(new Phrase(text, VALUE_FONT));
+        cell.setPadding(8);
+        cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        cell.setBorder(Rectangle.BOX);
+        cell.setBorderColor(new Color(189, 195, 199));
+        cell.setBorderWidth(0.5f);
+        return cell;
+    }
+
+    private PdfPCell createTotalLabelCell(String text) {
+        PdfPCell cell = new PdfPCell(new Phrase(text, TOTAL_FONT));
+        cell.setBackgroundColor(TOTAL_ROW_BG);
+        cell.setPadding(10);
+        cell.setBorder(Rectangle.BOX);
+        cell.setBorderColor(new Color(189, 195, 199));
+        cell.setBorderWidth(1f);
+        return cell;
+    }
+
+    private PdfPCell createTotalAmountCell(String text) {
+        PdfPCell cell = new PdfPCell(new Phrase(text, TOTAL_FONT));
+        cell.setBackgroundColor(TOTAL_ROW_BG);
+        cell.setPadding(10);
+        cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        cell.setBorder(Rectangle.BOX);
+        cell.setBorderColor(new Color(189, 195, 199));
+        cell.setBorderWidth(1f);
+        return cell;
     }
 
     private String formatCurrency(BigDecimal amount) {
-        if (amount == null) return CURRENCY_FORMAT.format(0);
-        return CURRENCY_FORMAT.format(amount);
+        return amount != null ? INR.format(amount) : "₹0.00";
+    }
+
+    private String nullSafe(String str) {
+        return str != null && !str.isBlank() ? str : "N/A";
+    }
+
+    private BigDecimal nullSafe(BigDecimal val) {
+        return val != null ? val : BigDecimal.ZERO;
+    }
+
+    private String toWords(BigDecimal number) {
+        if (number == null || number.compareTo(BigDecimal.ZERO) == 0) return "Zero Rupees";
+
+        long rupees = number.longValue();
+        int paise = number.subtract(new BigDecimal(rupees)).multiply(new BigDecimal(100)).intValue();
+
+        StringBuilder words = new StringBuilder();
+        words.append(numberToWords(rupees)).append(" Rupees");
+
+        if (paise > 0) {
+            words.append(" and ").append(numberToWords(paise)).append(" Paise");
+        }
+
+        return words.toString();
+    }
+
+    private String numberToWords(long number) {
+        String[] ones = {"", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
+                "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"};
+        String[] tens = {"", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"};
+
+        if (number < 20) return ones[(int) number];
+        if (number < 100) return tens[(int) (number / 10)] + (number % 10 != 0 ? " " + ones[(int) (number % 10)] : "");
+        if (number < 1000) return ones[(int) (number / 100)] + " Hundred" + (number % 100 != 0 ? " " + numberToWords(number % 100) : "");
+        if (number < 100000) return numberToWords(number / 1000) + " Thousand" + (number % 1000 != 0 ? " " + numberToWords(number % 1000) : "");
+        if (number < 10000000) return numberToWords(number / 100000) + " Lakh" + (number % 100000 != 0 ? " " + numberToWords(number % 100000) : "");
+
+        return numberToWords(number / 10000000) + " Crore" + (number % 10000000 != 0 ? " " + numberToWords(number % 10000000) : "");
     }
 }

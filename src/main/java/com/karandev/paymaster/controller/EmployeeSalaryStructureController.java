@@ -31,7 +31,7 @@ public class EmployeeSalaryStructureController {
     @PutMapping
     public ResponseEntity<String> updateSalaryStructure(@RequestBody SalaryStructureRequestDto dto) {
         log.info("Updating salary structure for employeeId={} companyId={}", dto.getEmployeeId(), dto.getCompanyId());
-        salaryStructureService.udpateEmployeeSalaryStructure(dto);
+        salaryStructureService.updateEmployeeSalaryStructure(dto);
         return ResponseEntity.ok("Salary structure updated successfully");
     }
 

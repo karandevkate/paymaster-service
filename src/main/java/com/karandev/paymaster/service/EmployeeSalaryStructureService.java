@@ -8,6 +8,7 @@ import java.util.UUID;
 public interface EmployeeSalaryStructureService {
 
     void setEmployeeSalaryStructure(SalaryStructureRequestDto salaryStructureRequestDto);
-    void udpateEmployeeSalaryStructure(SalaryStructureRequestDto salaryStructureRequestDto);
+    void updateEmployeeSalaryStructure(SalaryStructureRequestDto dto);
+
     SalaryStructureResponseDto getSalaryStructureForEmployeeByEmpIdAndCompanyId(UUID employeeId, UUID companyId);
 }

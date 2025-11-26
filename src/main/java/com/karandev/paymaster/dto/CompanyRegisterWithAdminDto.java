@@ -1,5 +1,6 @@
 package com.karandev.paymaster.dto;
 
+import com.karandev.paymaster.entity.Gender;
 import lombok.Data;
 
 import java.time.LocalDate;
@@ -16,4 +17,5 @@ public class CompanyRegisterWithAdminDto {
     private String adminEmail;
     private String adminContactNumber;
     private LocalDate birthDate;
+    private Gender gender;
 }

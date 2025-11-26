@@ -14,7 +14,6 @@ public class EmployeePayroll {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    @Column()
     private UUID payRollId;
 
     @ManyToOne
@@ -29,28 +28,43 @@ public class EmployeePayroll {
     private Integer year;
 
     @Column(precision = 19, scale = 2)
-    private BigDecimal grossSalary;
-
-    @Column(precision = 19, scale = 2)
-    private BigDecimal pfAmount;
+    private BigDecimal basicSalary;
 
     @Column(precision = 19, scale = 2)
     private BigDecimal hra;
 
     @Column(precision = 19, scale = 2)
-    private BigDecimal da;
+    private BigDecimal conveyance;
+
+    @Column(precision = 19, scale = 2)
+    private BigDecimal medicalAllowance;
 
     @Column(precision = 19, scale = 2)
     private BigDecimal specialAllowance;
+
+    @Column(precision = 19, scale = 2)
+    private BigDecimal bonusAmount;
+
+    @Column(precision = 19, scale = 2)
+    private BigDecimal grossSalary;
+
+    @Column(precision = 19, scale = 2)
+    private BigDecimal pfEmployeeAmount;
+
+    @Column(precision = 19, scale = 2)
+    private BigDecimal pfEmployerAmount;
+
+    @Column(precision = 19, scale = 2)
+    private BigDecimal esiEmployeeAmount;
+
+    @Column(precision = 19, scale = 2)
+    private BigDecimal esiEmployerAmount;
 
     @Column(precision = 19, scale = 2)
     private BigDecimal professionalTaxAmount;
 
     @Column(precision = 19, scale = 2)
     private BigDecimal incomeTaxAmount;
-
-    @Column(precision = 19, scale = 2)
-    private BigDecimal lopDeduction;
 
     @Column(precision = 19, scale = 2)
     private BigDecimal netSalary;
@@ -61,17 +75,14 @@ public class EmployeePayroll {
     private LocalDateTime updatedAt;
 
     @PrePersist
-    protected void onGenerate() {
+    protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = createdAt;
-
+        generatedAt = createdAt;
     }
 
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
-
-
 }
-

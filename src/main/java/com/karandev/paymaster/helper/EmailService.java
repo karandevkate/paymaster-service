@@ -49,7 +49,6 @@ public class EmailService {
 
             mailSender.send(message);
         } catch (Exception e) {
-            // Log the error but don't re-throw a RuntimeException if email failure shouldn't stop the payroll
             System.err.println("Failed to send email to " + toEmail + ": " + e.getMessage());
         }
     }

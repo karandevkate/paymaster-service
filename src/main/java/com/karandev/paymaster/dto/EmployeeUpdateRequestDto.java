@@ -8,7 +8,7 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 @Data
-public class EmployeeRequestDto {
+public class EmployeeUpdateRequestDto {
     private String name;
     private String email;
     private String contactNumber;
@@ -17,7 +17,6 @@ public class EmployeeRequestDto {
     private String designation;
     private Gender gender;
     private LocalDate joiningDate;
-    private String password;
     private UUID companyId;
 }
 

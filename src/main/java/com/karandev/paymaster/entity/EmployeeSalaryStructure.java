@@ -14,7 +14,6 @@ public class EmployeeSalaryStructure {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    @Column()
     private UUID id;
 
     @ManyToOne
@@ -25,14 +24,35 @@ public class EmployeeSalaryStructure {
     @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
 
-    @Column(precision = 19, scale = 2)
     private BigDecimal basicSalary;
 
-    @Column(precision = 19, scale = 2)
+    private BigDecimal hra;
+
+    private BigDecimal conveyance;
+
+    private BigDecimal medicalAllowance;
+
+    private BigDecimal specialAllowance;
+
+    private BigDecimal bonusAmount;
+
     private BigDecimal grossSalary;
 
-    @Column(precision = 19, scale = 2)
-    private BigDecimal specialAllowance;
+    private BigDecimal pfEmployee;
+
+    private BigDecimal pfEmployer;
+
+    private BigDecimal esiEmployee;
+
+    private BigDecimal esiEmployer;
+
+    private BigDecimal professionalTax;
+
+    private BigDecimal incomeTax;
+
+    private BigDecimal netSalary;
+
+    private BigDecimal ctc;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -47,5 +67,4 @@ public class EmployeeSalaryStructure {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
-
 }

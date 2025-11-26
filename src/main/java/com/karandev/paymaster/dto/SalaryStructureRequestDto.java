@@ -7,9 +7,11 @@ import java.util.UUID;
 
 @Data
 public class SalaryStructureRequestDto {
-    private UUID  employeeId;
+
+    private UUID employeeId;
     private UUID companyId;
+
     private BigDecimal basicSalary;
-    private BigDecimal grossSalary;
     private BigDecimal specialAllowance;
+    private BigDecimal bonusAmount;
 }

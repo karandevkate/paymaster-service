@@ -1,4 +1,4 @@
-package com.karandev.paymaster.exception.handler;
+package com.karandev.paymaster.exception;
 
 import com.karandev.paymaster.exception.CompanyNotFoundException;
 import com.karandev.paymaster.exception.EmployeeNotFoundException;

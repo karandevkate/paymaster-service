@@ -3,10 +3,7 @@ package com.karandev.paymaster.service.impl;
 import com.karandev.paymaster.dto.CompanyResponseDto;
 import com.karandev.paymaster.dto.CompanyUpdateDTO;
 import com.karandev.paymaster.dto.CompanyRegisterWithAdminDto;
-import com.karandev.paymaster.entity.Company;
-import com.karandev.paymaster.entity.Employee;
-import com.karandev.paymaster.entity.EmployeeStatus;
-import com.karandev.paymaster.entity.Role;
+import com.karandev.paymaster.entity.*;
 import com.karandev.paymaster.exception.CompanyNotFoundException;
 import com.karandev.paymaster.helper.EmailService;
 import com.karandev.paymaster.helper.UniqueEmployeeCodeGenerator;
@@ -41,6 +38,8 @@ public class CompanyServiceImpl implements CompanyService {
 
     @Transactional
     public void createCompany(CompanyRegisterWithAdminDto dto) {
+        log.info("Creating company: {}", dto.getName());
+
         Company company = new Company();
         company.setName(dto.getName());
         company.setEmail(dto.getEmail());
@@ -49,6 +48,7 @@ public class CompanyServiceImpl implements CompanyService {
         company.setRegistrationNumber(dto.getRegistrationNumber());
 
         Company savedCompany = companyRepository.save(company);
+        log.info("Company saved with ID: {}", savedCompany.getCompanyId());
 
         Employee admin = new Employee();
         admin.setName(dto.getAdminName());
@@ -61,17 +61,26 @@ public class CompanyServiceImpl implements CompanyService {
         admin.setJoiningDate(LocalDate.now());
         admin.setDepartment("System Administration");
         admin.setDesignation("Admin");
+
+        Gender genderValue = (dto.getGender() != null)
+                ? Gender.valueOf(String.valueOf(dto.getGender()))
+                : null;
+        admin.setGender(genderValue);
+
         admin.setEmpCode(UniqueEmployeeCodeGenerator.generateEmpCode(dto.getName()));
 
         String token = UUID.randomUUID().toString();
         admin.setPasswordToken(token);
         admin.setTokenExpiry(LocalDateTime.now().plusHours(24));
 
-        Employee employee=employeeRepository.save(admin);
+        Employee employee = employeeRepository.save(admin);
+        log.info("Admin created with ID: {}", employee.getEmployeeId());
 
         emailService.sendSetPasswordEmail(employee.getEmployeeId());
-
+        log.info("Set password email sent to admin: {}", employee.getEmail());
     }
+
+
     public CompanyResponseDto MapEntitytoDto(Company company) {
         if (company == null) return null;
 

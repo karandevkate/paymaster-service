@@ -2,17 +2,21 @@ package com.karandev.paymaster.service.impl;
 
 import com.karandev.paymaster.dto.EmployeeRequestDto;
 import com.karandev.paymaster.dto.EmployeeResponseDto;
+import com.karandev.paymaster.dto.EmployeeUpdateRequestDto;
 import com.karandev.paymaster.entity.Company;
 import com.karandev.paymaster.entity.Employee;
-import com.karandev.paymaster.exception.CompanyNotFoundException;
+import com.karandev.paymaster.entity.EmployeeStatus;
+import com.karandev.paymaster.entity.Gender;
 import com.karandev.paymaster.exception.EmployeeNotFoundException;
 import com.karandev.paymaster.helper.EmailService;
 import com.karandev.paymaster.helper.UniqueEmployeeCodeGenerator;
 import com.karandev.paymaster.repository.CompanyRepository;
+import com.karandev.paymaster.repository.EmployeeRepository;
 import com.karandev.paymaster.service.EmployeeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -24,28 +28,23 @@ public class EmployeeServiceImpl implements EmployeeService {
     private static final Logger log = LoggerFactory.getLogger(EmployeeServiceImpl.class);
 
     private final CompanyRepository companyRepository;
-    private final com.karandev.paymaster.repository.EmployeeRepository employeeRepository;
+    private final EmployeeRepository employeeRepository;
     private final EmailService emailService;
+
     public EmployeeServiceImpl(CompanyRepository companyRepository,
-                               com.karandev.paymaster.repository.EmployeeRepository employeeRepository, EmailService emailService) {
+                               EmployeeRepository employeeRepository,
+                               EmailService emailService) {
         this.companyRepository = companyRepository;
         this.employeeRepository = employeeRepository;
         this.emailService = emailService;
     }
 
-
-
-
-
-    public Employee mapDtoToEntity(EmployeeRequestDto dto) {
-        if (dto.getCompanyId() == null) {
-            throw new CompanyNotFoundException("Company ID must not be null");
-        }
-
+    private Employee mapDtoToEntity(EmployeeRequestDto dto) {
         Company company = companyRepository.findById(dto.getCompanyId())
-                .orElseThrow(() -> new CompanyNotFoundException(dto.getCompanyId()));
+                .orElseThrow(() -> new RuntimeException("Company not found: " + dto.getCompanyId()));
 
         Employee employee = new Employee();
+        employee.setCompany(company);
         employee.setName(dto.getName());
         employee.setEmail(dto.getEmail());
         employee.setContactNumber(dto.getContactNumber());
@@ -54,18 +53,14 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee.setJoiningDate(dto.getJoiningDate());
         employee.setBirthdate(dto.getBirthdate());
         employee.setPassword(dto.getPassword());
-        employee.setCompany(company);
-
-        // Generate emp code using birthdate
+        employee.setGender(dto.getGender() != null ? dto.getGender() : Gender.MALE);
         employee.setEmpCode(UniqueEmployeeCodeGenerator.generateEmpCode(company.getName()));
 
         return employee;
     }
 
-    public EmployeeResponseDto MapEntitytoDto(Employee employee) {
-        if (employee == null) {
-            return null;
-        }
+    private EmployeeResponseDto mapEntityToDto(Employee employee) {
+        if (employee == null) return null;
 
         EmployeeResponseDto dto = new EmployeeResponseDto();
         dto.setEmployeeId(employee.getEmployeeId());
@@ -73,115 +68,126 @@ public class EmployeeServiceImpl implements EmployeeService {
         dto.setEmail(employee.getEmail());
         dto.setContactNumber(employee.getContactNumber());
         dto.setDepartment(employee.getDepartment());
-        dto.setBirthdate(employee.getBirthdate());
-        dto.setEmpcode(employee.getEmpCode());
         dto.setDesignation(employee.getDesignation());
+        dto.setBirthdate(employee.getBirthdate());
         dto.setJoiningDate(employee.getJoiningDate());
+        dto.setEmpcode(employee.getEmpCode());
         dto.setCompanyId(employee.getCompany() != null ? employee.getCompany().getCompanyId() : null);
         dto.setEmployeeStatus(employee.getStatus());
+        dto.setGender(employee.getGender());
+        dto.setRole(employee.getRole());
         return dto;
     }
 
     @Override
+    @Transactional
     public void createEmployee(EmployeeRequestDto dto) {
-        log.info("Creating employee: {}", dto);
+        log.info("Creating employee: {}", dto.getEmail());
 
         Employee employee = mapDtoToEntity(dto);
-        Employee savedEmployee =employeeRepository.save(employee);
-        emailService.sendSetPasswordEmail(savedEmployee.getEmployeeId());
+        Employee saved = employeeRepository.save(employee);
 
-        log.info("Employee created successfully with empCode: {}", employee.getEmpCode());
+        emailService.sendSetPasswordEmail(saved.getEmployeeId());
+
+        log.info("Employee created | ID: {} | Code: {}", saved.getEmployeeId(), saved.getEmpCode());
     }
-
-
 
     @Override
     public EmployeeResponseDto getEmployeeById(UUID employeeId) {
-        log.info("Fetching employee with ID: {}", employeeId);
-
+        log.info("Fetching employee: {}", employeeId);
         Employee employee = employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new EmployeeNotFoundException(employeeId));
-
-        return MapEntitytoDto(employee);
+        return mapEntityToDto(employee);
     }
 
     @Override
     public List<EmployeeResponseDto> getAllEmployees() {
         log.info("Fetching all employees");
-
         return employeeRepository.findAll().stream()
-                .map(this::MapEntitytoDto)
+                .map(this::mapEntityToDto)
                 .toList();
     }
 
+    @Override
+    public List<EmployeeResponseDto> fetchEmployeeByCompanyId(UUID companyId) {
+        log.info("Fetching employees for company: {}", companyId);
+        return employeeRepository.findAllByCompany_CompanyId(companyId).stream()
+                .map(this::mapEntityToDto)
+                .toList();
+    }
 
     @Override
-    public void updateEmployee(UUID employeeId, EmployeeRequestDto dto) {
-        log.info("Updating employee with ID: {}", employeeId);
+    @Transactional
+    public void updateEmployee(UUID employeeId, EmployeeUpdateRequestDto dto) {
+        log.info("Updating employee profile: {}", employeeId);
 
         Employee existing = employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new EmployeeNotFoundException(employeeId));
 
         existing.setName(dto.getName());
         existing.setEmail(dto.getEmail());
-        existing.setDepartment(dto.getDepartment());
         existing.setContactNumber(dto.getContactNumber());
+        existing.setDepartment(dto.getDepartment());
         existing.setDesignation(dto.getDesignation());
         existing.setJoiningDate(dto.getJoiningDate());
         existing.setBirthdate(dto.getBirthdate());
-        existing.setPassword(dto.getPassword());
 
-        if (!existing.getCompany().getCompanyId().equals(dto.getCompanyId())) {
-            Company company = companyRepository.findById(dto.getCompanyId())
-                    .orElseThrow(() -> new CompanyNotFoundException(dto.getCompanyId()));
-            existing.setCompany(company);
+        if (dto.getGender() != null) {
+            existing.setGender(dto.getGender());
         }
 
+
         employeeRepository.save(existing);
-        log.info("Employee updated successfully");
+        log.info("Employee profile updated successfully: {}", employeeId);
     }
 
-
     @Override
+    @Transactional
     public void deleteEmployee(UUID employeeId) {
-        log.info("Deleting employee with ID: {}", employeeId);
-
+        log.info("Deleting employee: {}", employeeId);
         Employee employee = employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new EmployeeNotFoundException(employeeId));
-
         employeeRepository.delete(employee);
-        log.info("Employee deleted successfully");
+        log.info("Employee deleted: {}", employeeId);
     }
 
     @Override
-    public List<EmployeeResponseDto> fetchEmployeeByCompanyId(UUID companyId) {
-        log.info("Fetching employees for company with ID: {}", companyId);
-
-        List<EmployeeResponseDto> employees = employeeRepository.findAllByCompany_CompanyId(companyId)
-                .stream()
-                .map(this::MapEntitytoDto)
-                .toList();
-
-        log.info("Found {} employees for company ID: {}", employees.size(), companyId);
-        return employees;
-    }
-
-
-
-
+    @Transactional
     public void setPassword(String token, String newPassword) {
+        log.info("Password reset request with token");
+
         Employee employee = employeeRepository.findByPasswordToken(token)
                 .orElseThrow(() -> new RuntimeException("Invalid or expired token"));
 
         if (employee.getTokenExpiry() == null || employee.getTokenExpiry().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Token expired");
+            throw new RuntimeException("Token has expired");
         }
 
         employee.setPassword(newPassword);
         employee.setPasswordToken(null);
         employee.setTokenExpiry(null);
         employeeRepository.save(employee);
+
+        log.info("Password updated successfully for employee: {}", employee.getEmployeeId());
     }
 
 
+    @Override
+    @Transactional
+    public void deactivateEmployee(UUID employeeId) {
+        log.info("Deactivating employee: {}", employeeId);
+
+        Employee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new EmployeeNotFoundException(employeeId));
+
+        if (employee.getStatus() == EmployeeStatus.INACTIVE) {
+            log.info("Employee {} is already inactive", employeeId);
+            return;
+        }
+
+        employee.setStatus(EmployeeStatus.INACTIVE);
+        employeeRepository.save(employee);
+
+        log.info("Employee deactivated successfully: {}", employeeId);
+    }
 }

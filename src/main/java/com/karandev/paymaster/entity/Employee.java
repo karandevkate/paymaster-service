@@ -37,16 +37,19 @@ public class Employee {
     private String passwordToken;
     private LocalDateTime tokenExpiry;
 
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Gender gender ;
+
     @Enumerated(EnumType.STRING)
     private Role role = Role.EMPLOYEE;
+
+
     @Enumerated(EnumType.STRING)
     private EmployeeStatus status = EmployeeStatus.ACTIVE;
 
-    @OneToOne(mappedBy = "employee", cascade = CascadeType.ALL, orphanRemoval = true)
-    private LeaveBalance leaveBalance;
 
-    @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<LeaveRequest> leaveRequests = new ArrayList<>();
 
     @OneToOne(mappedBy = "employee", cascade = CascadeType.ALL, orphanRemoval = true)
     private EmployeeSalaryStructure salaryStructure;
