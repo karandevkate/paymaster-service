@@ -87,24 +87,25 @@ public class EmployeePayrollServiceImpl implements EmployeePayrollService {
                                              EmployeeSalaryStructure structure, PayrollConfiguration config,
                                              int month, int year) {
 
-        BigDecimal basic = nullSafe(structure.getBasicSalary());
-        BigDecimal specialAllowance = nullSafe(structure.getSpecialAllowance());
-        BigDecimal bonus = nullSafe(structure.getBonusAmount());
+        BigDecimal basic = nullSafe(structure.getBasicSalary()).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal specialAllowance = nullSafe(structure.getSpecialAllowance()).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal bonus = nullSafe(structure.getBonusAmount()).setScale(0, RoundingMode.HALF_UP);
 
         BigDecimal hra = ZERO;
         if (Boolean.TRUE.equals(config.getHraApplicable()) && config.getHraPercentage() != null) {
             hra = basic.multiply(config.getHraPercentage())
-                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+                    .divide(BigDecimal.valueOf(100), 0, RoundingMode.HALF_UP);
         }
 
         BigDecimal conveyance = ZERO;
-        if (Boolean.TRUE.equals(config.getConveyanceApplicable()) && config.getConveyanceAmount() != null) {
-            conveyance = config.getConveyanceAmount();
+        if (Boolean.TRUE.equals(config.getConveyanceApplicable()) && config.getConveyancePercentage() != null) {
+            conveyance = basic.multiply(config.getConveyancePercentage())
+                    .divide(BigDecimal.valueOf(100), 0, RoundingMode.HALF_UP);
         }
 
         BigDecimal medical = ZERO;
         if (Boolean.TRUE.equals(config.getMedicalApplicable()) && config.getMedicalAllowanceAmount() != null) {
-            medical = config.getMedicalAllowanceAmount();
+            medical = config.getMedicalAllowanceAmount().setScale(0, RoundingMode.HALF_UP);
         }
 
         BigDecimal grossSalary = basic
@@ -116,44 +117,43 @@ public class EmployeePayrollServiceImpl implements EmployeePayrollService {
 
         BigDecimal pfEmployee = ZERO;
         BigDecimal pfEmployer = ZERO;
-        if (Boolean.TRUE.equals(config.getPfApplicable())) {
+        if (Boolean.TRUE.equals(structure.getIsPfApplicable())) {
             if (config.getPfEmployeePercentage() != null) {
                 pfEmployee = basic.multiply(config.getPfEmployeePercentage())
-                        .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+                        .divide(BigDecimal.valueOf(100), 0, RoundingMode.HALF_UP);
             }
             if (config.getPfEmployerPercentage() != null) {
                 pfEmployer = basic.multiply(config.getPfEmployerPercentage())
-                        .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+                        .divide(BigDecimal.valueOf(100), 0, RoundingMode.HALF_UP);
             }
         }
 
-        BigDecimal esiEmployee = ZERO;
-        BigDecimal esiEmployer = ZERO;
-        if (Boolean.TRUE.equals(config.getEsiApplicable()) && grossSalary.compareTo(ESI_LIMIT) <= 0) {
-            BigDecimal esiEmpRate = config.getEsiEmployeePercentage() != null
-                    ? config.getEsiEmployeePercentage() : new BigDecimal("0.75");
-            BigDecimal esiEmprRate = config.getEsiEmployerPercentage() != null
-                    ? config.getEsiEmployerPercentage() : new BigDecimal("3.25");
-
-            esiEmployee = grossSalary.multiply(esiEmpRate).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
-            esiEmployer = grossSalary.multiply(esiEmprRate).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+        BigDecimal employeeEsicContribution = ZERO;
+        BigDecimal employerEsicContribution = ZERO;
+        BigDecimal totalEsicDeduction = ZERO;
+        if (Boolean.TRUE.equals(structure.getIsEsicApplicable())) {
+            // ESIC calculation: 0.75% for employee, 3.25% for employer. Round to nearest whole number.
+            employeeEsicContribution = grossSalary.multiply(new BigDecimal("0.75")).divide(new BigDecimal("100"), 0, RoundingMode.HALF_UP);
+            employerEsicContribution = grossSalary.multiply(new BigDecimal("3.25")).divide(new BigDecimal("100"), 0, RoundingMode.HALF_UP);
+            totalEsicDeduction = employeeEsicContribution.add(employerEsicContribution);
         }
 
-        BigDecimal professionalTax = calculateProfessionalTax(grossSalary, employee.getGender().toString(), month);
+        BigDecimal professionalTax = calculateProfessionalTax(grossSalary, employee.getGender().toString(), month).setScale(0, RoundingMode.HALF_UP);
 
         BigDecimal incomeTaxMonthly = ZERO;
         BigDecimal annualGross = grossSalary.multiply(BigDecimal.valueOf(12));
         if (annualGross.compareTo(ZERO) > 0 && config.getTaxSlab1Limit() != null) {
             BigDecimal annualTax = calculateProgressiveIncomeTax(annualGross, config);
-            incomeTaxMonthly = annualTax.divide(BigDecimal.valueOf(12), 2, RoundingMode.HALF_UP);
+            incomeTaxMonthly = annualTax.divide(BigDecimal.valueOf(12), 0, RoundingMode.HALF_UP);
         }
 
+        // Deduct both employee and employer ESI from employee salary
         BigDecimal totalDeductions = pfEmployee
-                .add(esiEmployee)
+                .add(totalEsicDeduction)
                 .add(professionalTax)
                 .add(incomeTaxMonthly);
 
-        BigDecimal netSalary = grossSalary.subtract(totalDeductions);
+        BigDecimal netSalary = grossSalary.subtract(totalDeductions).setScale(0, RoundingMode.HALF_UP);
 
         EmployeePayroll payroll = new EmployeePayroll();
         payroll.setCompany(company);
@@ -172,8 +172,9 @@ public class EmployeePayrollServiceImpl implements EmployeePayrollService {
 
         payroll.setPfEmployeeAmount(pfEmployee);
         payroll.setPfEmployerAmount(pfEmployer);
-        payroll.setEsiEmployeeAmount(esiEmployee);
-        payroll.setEsiEmployerAmount(esiEmployer);
+        payroll.setEmployeeEsicContribution(employeeEsicContribution);
+        payroll.setEmployerEsicContribution(employerEsicContribution);
+        payroll.setTotalEsicDeduction(totalEsicDeduction);
         payroll.setProfessionalTaxAmount(professionalTax);
         payroll.setIncomeTaxAmount(incomeTaxMonthly);
 
@@ -242,14 +243,15 @@ public class EmployeePayrollServiceImpl implements EmployeePayrollService {
 
         dto.setPfEmployeeAmount(payroll.getPfEmployeeAmount());
         dto.setPfEmployerAmount(payroll.getPfEmployerAmount());
-        dto.setEsiEmployeeAmount(payroll.getEsiEmployeeAmount());
-        dto.setEsiEmployerAmount(payroll.getEsiEmployerAmount());
+        dto.setEmployeeEsicContribution(payroll.getEmployeeEsicContribution());
+        dto.setEmployerEsicContribution(payroll.getEmployerEsicContribution());
+        dto.setTotalEsicDeduction(payroll.getTotalEsicDeduction());
         dto.setProfessionalTaxAmount(payroll.getProfessionalTaxAmount());
         dto.setIncomeTaxAmount(payroll.getIncomeTaxAmount());
 
         // Calculate total deductions here (not stored in DB)
         BigDecimal totalDeductions = payroll.getPfEmployeeAmount()
-                .add(payroll.getEsiEmployeeAmount())
+                .add(payroll.getTotalEsicDeduction())
                 .add(payroll.getProfessionalTaxAmount())
                 .add(payroll.getIncomeTaxAmount());
 

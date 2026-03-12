@@ -80,11 +80,14 @@ public class EmployeeSalaryStructureServiceImpl implements EmployeeSalaryStructu
         target.setSpecialAllowance(source.getSpecialAllowance());
         target.setBonusAmount(source.getBonusAmount());
         target.setGrossSalary(source.getGrossSalary());
+        target.setIsPfApplicable(source.getIsPfApplicable());
+        target.setIsEsicApplicable(source.getIsEsicApplicable());
 
         target.setPfEmployee(source.getPfEmployee());
         target.setPfEmployer(source.getPfEmployer());
-        target.setEsiEmployee(source.getEsiEmployee());
-        target.setEsiEmployer(source.getEsiEmployer());
+        target.setEmployeeEsicContribution(source.getEmployeeEsicContribution());
+        target.setEmployerEsicContribution(source.getEmployerEsicContribution());
+        target.setTotalEsicDeduction(source.getTotalEsicDeduction());
         target.setProfessionalTax(source.getProfessionalTax());
         target.setIncomeTax(source.getIncomeTax());
 
@@ -103,17 +106,20 @@ public class EmployeeSalaryStructureServiceImpl implements EmployeeSalaryStructu
         s.setEmployee(employee);
         s.setCompany(employee.getCompany());
 
-        BigDecimal basic = dto.getBasicSalary();
-        BigDecimal special = nullSafe(dto.getSpecialAllowance());
-        BigDecimal bonus = nullSafe(dto.getBonusAmount());
+        BigDecimal basic = dto.getBasicSalary().setScale(0, RoundingMode.HALF_UP);
+        BigDecimal special = nullSafe(dto.getSpecialAllowance()).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal bonus = nullSafe(dto.getBonusAmount()).setScale(0, RoundingMode.HALF_UP);
 
         s.setBasicSalary(basic);
         s.setSpecialAllowance(special);
         s.setBonusAmount(bonus);
 
-        BigDecimal hra = calcIfApplicable(basic, config.getHraApplicable(), config.getHraPercentage());
-        BigDecimal conveyance = config.getConveyanceApplicable() ? nullSafe(config.getConveyanceAmount()) : ZERO;
-        BigDecimal medical = config.getMedicalApplicable() ? nullSafe(config.getMedicalAllowanceAmount()) : ZERO;
+        s.setIsPfApplicable(dto.getIsPfApplicable() != null ? dto.getIsPfApplicable() : config.getIsPfApplicable());
+        s.setIsEsicApplicable(dto.getIsEsicApplicable() != null ? dto.getIsEsicApplicable() : config.getIsEsicApplicable());
+
+        BigDecimal hra = calcIfApplicable(basic, config.getHraApplicable(), config.getHraPercentage()).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal conveyance = calcIfApplicable(basic, config.getConveyanceApplicable(), config.getConveyancePercentage()).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal medical = config.getMedicalApplicable() ? nullSafe(config.getMedicalAllowanceAmount()).setScale(0, RoundingMode.HALF_UP) : ZERO;
 
         s.setHra(hra);
         s.setConveyance(conveyance);
@@ -128,34 +134,39 @@ public class EmployeeSalaryStructureServiceImpl implements EmployeeSalaryStructu
 
         s.setGrossSalary(grossSalary);
 
-        BigDecimal pfEmployee = calcIfApplicable(basic, config.getPfApplicable(), config.getPfEmployeePercentage());
-        BigDecimal pfEmployer = calcIfApplicable(basic, config.getPfApplicable(), config.getPfEmployerPercentage());
+        BigDecimal pfEmployee = calcIfApplicable(basic, s.getIsPfApplicable(), config.getPfEmployeePercentage()).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal pfEmployer = calcIfApplicable(basic, s.getIsPfApplicable(), config.getPfEmployerPercentage()).setScale(0, RoundingMode.HALF_UP);
 
         s.setPfEmployee(pfEmployee);
         s.setPfEmployer(pfEmployer);
 
-        BigDecimal esiEmployee = ZERO;
-        BigDecimal esiEmployer = ZERO;
-        if (config.getEsiApplicable() && grossSalary.compareTo(ESI_WAGE_LIMIT) <= 0) {
-            esiEmployee = calcPercentage(grossSalary, config.getEsiEmployeePercentage());
-            esiEmployer = calcPercentage(grossSalary, config.getEsiEmployerPercentage());
+        BigDecimal employeeEsicContribution = ZERO;
+        BigDecimal employerEsicContribution = ZERO;
+        BigDecimal totalEsicDeduction = ZERO;
+        if (Boolean.TRUE.equals(s.getIsEsicApplicable())) {
+            // ESIC calculation: 0.75% for employee, 3.25% for employer. Round to nearest whole number.
+            employeeEsicContribution = grossSalary.multiply(new BigDecimal("0.75")).divide(new BigDecimal("100"), 0, RoundingMode.HALF_UP);
+            employerEsicContribution = grossSalary.multiply(new BigDecimal("3.25")).divide(new BigDecimal("100"), 0, RoundingMode.HALF_UP);
+            totalEsicDeduction = employeeEsicContribution.add(employerEsicContribution);
         }
-        s.setEsiEmployee(esiEmployee);
-        s.setEsiEmployer(esiEmployer);
+        s.setEmployeeEsicContribution(employeeEsicContribution);
+        s.setEmployerEsicContribution(employerEsicContribution);
+        s.setTotalEsicDeduction(totalEsicDeduction);
 
-        s.setProfessionalTax(calculateProfessionalTax(grossSalary, employee.getGender(), currentMonth));
-        s.setIncomeTax(calculateMonthlyIncomeTax(grossSalary, config));
+        s.setProfessionalTax(calculateProfessionalTax(grossSalary, employee.getGender(), currentMonth).setScale(0, RoundingMode.HALF_UP));
+        s.setIncomeTax(calculateMonthlyIncomeTax(grossSalary, config).setScale(0, RoundingMode.HALF_UP));
 
+        // Deduct both employee and employer ESI from gross salary as requested
         BigDecimal totalDeduction = pfEmployee
-                .add(esiEmployee)
+                .add(totalEsicDeduction)
                 .add(s.getProfessionalTax())
                 .add(s.getIncomeTax());
 
-        s.setNetSalary(grossSalary.subtract(totalDeduction));
+        s.setNetSalary(grossSalary.subtract(totalDeduction).setScale(0, RoundingMode.HALF_UP));
 
         BigDecimal annualCtc = grossSalary
                 .add(pfEmployer)
-                .add(esiEmployer)
+                .add(employerEsicContribution)
                 .multiply(BigDecimal.valueOf(12))
                 .setScale(0, RoundingMode.HALF_UP);
 
@@ -281,8 +292,14 @@ public class EmployeeSalaryStructureServiceImpl implements EmployeeSalaryStructu
         dto.setBonusAmount(s.getBonusAmount());
         dto.setGrossSalary(s.getGrossSalary());
 
+        dto.setIsPfApplicable(s.getIsPfApplicable());
+        dto.setIsEsicApplicable(s.getIsEsicApplicable());
+
         dto.setPfEmployee(s.getPfEmployee());
-        dto.setEsiEmployee(s.getEsiEmployee().add(s.getEsiEmployer()));
+        dto.setPfEmployer(s.getPfEmployer());
+        dto.setEmployeeEsicContribution(s.getEmployeeEsicContribution());
+        dto.setEmployerEsicContribution(s.getEmployerEsicContribution());
+        dto.setTotalEsicDeduction(s.getTotalEsicDeduction());
         dto.setProfessionalTax(s.getProfessionalTax());
         dto.setIncomeTax(s.getIncomeTax());
 

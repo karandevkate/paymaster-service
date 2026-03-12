@@ -38,13 +38,19 @@ public class EmployeeSalaryStructure {
 
     private BigDecimal grossSalary;
 
+    private Boolean isPfApplicable = true;
+
+    private Boolean isEsicApplicable = false;
+
     private BigDecimal pfEmployee;
 
     private BigDecimal pfEmployer;
 
-    private BigDecimal esiEmployee;
+    private BigDecimal employeeEsicContribution;
 
-    private BigDecimal esiEmployer;
+    private BigDecimal employerEsicContribution;
+
+    private BigDecimal totalEsicDeduction;
 
     private BigDecimal professionalTax;
 

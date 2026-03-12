@@ -19,13 +19,13 @@ public class PayrollConfigurationResponseDto {
 
     // Allowance Values
     private BigDecimal hraPercentage;
-    private BigDecimal conveyanceAmount;
+    private BigDecimal conveyancePercentage;
     private BigDecimal medicalAllowanceAmount;
     private BigDecimal bonusPercentage;
 
     // PF / ESI
-    private Boolean pfApplicable;
-    private Boolean esiApplicable;
+    private Boolean isPfApplicable;
+    private Boolean isEsicApplicable;
     private BigDecimal pfEmployeePercentage;
     private BigDecimal pfEmployerPercentage;
     private BigDecimal esiEmployeePercentage;

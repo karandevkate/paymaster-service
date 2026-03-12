@@ -110,11 +110,11 @@ public class PayrollConfigurationServiceImpl implements PayrollConfigurationServ
         entity.setMedicalApplicable(dto.getMedicalApplicable() != null ? dto.getMedicalApplicable() : false);
 
         entity.setHraPercentage(dto.getHraPercentage());
-        entity.setConveyanceAmount(dto.getConveyanceAmount());
+        entity.setConveyancePercentage(dto.getConveyancePercentage());
         entity.setMedicalAllowanceAmount(dto.getMedicalAllowanceAmount());
 
-        entity.setPfApplicable(dto.getPfApplicable() != null ? dto.getPfApplicable() : true);
-        entity.setEsiApplicable(dto.getEsiApplicable() != null ? dto.getEsiApplicable() : false);
+        entity.setIsPfApplicable(dto.getIsPfApplicable() != null ? dto.getIsPfApplicable() : true);
+        entity.setIsEsicApplicable(dto.getIsEsicApplicable() != null ? dto.getIsEsicApplicable() : false);
         entity.setPfEmployeePercentage(dto.getPfEmployeePercentage());
         entity.setPfEmployerPercentage(dto.getPfEmployerPercentage());
         entity.setEsiEmployeePercentage(dto.getEsiEmployeePercentage());
@@ -138,11 +138,11 @@ public class PayrollConfigurationServiceImpl implements PayrollConfigurationServ
         dto.setMedicalApplicable(entity.getMedicalApplicable());
 
         dto.setHraPercentage(entity.getHraPercentage());
-        dto.setConveyanceAmount(entity.getConveyanceAmount());
+        dto.setConveyancePercentage(entity.getConveyancePercentage());
         dto.setMedicalAllowanceAmount(entity.getMedicalAllowanceAmount());
 
-        dto.setPfApplicable(entity.getPfApplicable());
-        dto.setEsiApplicable(entity.getEsiApplicable());
+        dto.setIsPfApplicable(entity.getIsPfApplicable());
+        dto.setIsEsicApplicable(entity.getIsEsicApplicable());
         dto.setPfEmployeePercentage(entity.getPfEmployeePercentage());
         dto.setPfEmployerPercentage(entity.getPfEmployerPercentage());
         dto.setEsiEmployeePercentage(entity.getEsiEmployeePercentage());

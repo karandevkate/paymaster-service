@@ -55,10 +55,13 @@ public class EmployeePayroll {
     private BigDecimal pfEmployerAmount;
 
     @Column(precision = 19, scale = 2)
-    private BigDecimal esiEmployeeAmount;
+    private BigDecimal employeeEsicContribution;
 
     @Column(precision = 19, scale = 2)
-    private BigDecimal esiEmployerAmount;
+    private BigDecimal employerEsicContribution;
+
+    @Column(precision = 19, scale = 2)
+    private BigDecimal totalEsicDeduction;
 
     @Column(precision = 19, scale = 2)
     private BigDecimal professionalTaxAmount;

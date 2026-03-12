@@ -14,4 +14,7 @@ public class SalaryStructureRequestDto {
     private BigDecimal basicSalary;
     private BigDecimal specialAllowance;
     private BigDecimal bonusAmount;
+
+    private Boolean isPfApplicable;
+    private Boolean isEsicApplicable;
 }

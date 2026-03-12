@@ -29,18 +29,18 @@ public class PayrollConfiguration {
     private Boolean conveyanceApplicable = false;
     private Boolean medicalApplicable = false;
 
-    @NotNull
-    @DecimalMin("0")
+    @NotNull @DecimalMin("0")
     @DecimalMax("100")
     private BigDecimal hraPercentage;
 
-    private BigDecimal conveyanceAmount;
+    @DecimalMin("0") @DecimalMax("100")
+    private BigDecimal conveyancePercentage;
 
     private BigDecimal medicalAllowanceAmount;
 
 
-    private Boolean pfApplicable = true;
-    private Boolean esiApplicable = false;
+    private Boolean isPfApplicable = true;
+    private Boolean isEsicApplicable = false;
 
     @DecimalMin("0") @DecimalMax("100")
     private BigDecimal pfEmployeePercentage;

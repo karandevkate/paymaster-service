@@ -38,8 +38,9 @@ public class EmployeePayrollResponseDto {
     // --------------------- DEDUCTIONS ---------------------
     private BigDecimal pfEmployeeAmount;
     private BigDecimal pfEmployerAmount;
-    private BigDecimal esiEmployeeAmount;
-    private BigDecimal esiEmployerAmount;
+    private BigDecimal employeeEsicContribution;
+    private BigDecimal employerEsicContribution;
+    private BigDecimal totalEsicDeduction;
     private BigDecimal professionalTaxAmount;
     private BigDecimal incomeTaxAmount;
 

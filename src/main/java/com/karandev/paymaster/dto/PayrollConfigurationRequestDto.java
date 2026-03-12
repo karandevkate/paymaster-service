@@ -24,9 +24,7 @@ public class PayrollConfigurationRequestDto {
     @DecimalMin(value = "0", message = "HRA percentage must be >= 0")
     @DecimalMax(value = "100", message = "HRA percentage must be <= 100")
     private BigDecimal hraPercentage;
-
-    private BigDecimal conveyanceAmount;
-
+    private BigDecimal conveyancePercentage;
     private BigDecimal medicalAllowanceAmount;
 
 
@@ -36,8 +34,8 @@ public class PayrollConfigurationRequestDto {
     private BigDecimal bonusPercentage;
 
     // PF / ESI Applicability
-    private Boolean pfApplicable;
-    private Boolean esiApplicable;
+    private Boolean isPfApplicable;
+    private Boolean isEsicApplicable;
 
     @DecimalMin(value = "0", message = "PF Employee % must be >= 0")
     @DecimalMax(value = "100", message = "PF Employee % must be <= 100")

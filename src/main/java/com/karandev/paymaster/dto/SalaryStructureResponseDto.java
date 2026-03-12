@@ -23,6 +23,9 @@ public class SalaryStructureResponseDto {
     private BigDecimal specialAllowance;
     private BigDecimal bonusAmount;
 
+    private Boolean isPfApplicable;
+    private Boolean isEsicApplicable;
+
     // Critical Payslip Fields
     private BigDecimal grossEarnings;           // Gross PM(A) → 19726
     private BigDecimal grossMonthlyCtcBase;     // (A)+(B) PM → 20834
@@ -34,16 +37,13 @@ public class SalaryStructureResponseDto {
     // STATUTORY CONTRIBUTIONS (Employee Part - shown on payslip)
     // -------------------------------------------------------------------------
     private BigDecimal pfEmployee;
-    private BigDecimal esiEmployee;
+    private BigDecimal pfEmployer;
+    private BigDecimal employeeEsicContribution;
+    private BigDecimal employerEsicContribution;
+    private BigDecimal totalEsicDeduction;
     private BigDecimal professionalTax;
     private BigDecimal incomeTax;
     private BigDecimal totalDeductions;
-
-    // -------------------------------------------------------------------------
-    // EMPLOYER CONTRIBUTIONS (Not shown on employee payslip, but needed for HR/CTC)
-    // -------------------------------------------------------------------------
-    private BigDecimal pfEmployer;   // e.g., 1560 (12% + admin charges)
-    private BigDecimal esiEmployer; // e.g., ~642 (3.25% typically)
 
     // -------------------------------------------------------------------------
     // FINAL
