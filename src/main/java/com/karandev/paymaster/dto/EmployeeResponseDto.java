@@ -20,6 +20,12 @@ public class EmployeeResponseDto {
     private LocalDate birthdate;
     private String designation;
     private LocalDate joiningDate;
+    private String pan;
+    private String bankName;
+    private String accountNumber;
+    private String esicNumber;
+    private String uanNumber;
+    private String location;
     private UUID companyId;
     private Role role;
     private EmployeeStatus employeeStatus;

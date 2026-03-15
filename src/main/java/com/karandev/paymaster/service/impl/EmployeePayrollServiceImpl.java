@@ -2,6 +2,7 @@
 package com.karandev.paymaster.service.impl;
 
 import com.karandev.paymaster.dto.EmployeePayrollResponseDto;
+import com.karandev.paymaster.dto.ManualPayrollRequestDto;
 import com.karandev.paymaster.entity.*;
 import com.karandev.paymaster.helper.EmailService;
 import com.karandev.paymaster.helper.PdfGenerationService;
@@ -85,7 +86,7 @@ public class EmployeePayrollServiceImpl implements EmployeePayrollService {
 
     private EmployeePayroll calculatePayroll(Employee employee, Company company,
                                              EmployeeSalaryStructure structure, PayrollConfiguration config,
-                                             int month, int year) {
+                                             int month, int year, Integer daysPaid) {
 
         BigDecimal basic = nullSafe(structure.getBasicSalary()).setScale(0, RoundingMode.HALF_UP);
         BigDecimal specialAllowance = nullSafe(structure.getSpecialAllowance()).setScale(0, RoundingMode.HALF_UP);
@@ -179,6 +180,12 @@ public class EmployeePayrollServiceImpl implements EmployeePayrollService {
         payroll.setIncomeTaxAmount(incomeTaxMonthly);
 
         payroll.setNetSalary(netSalary);
+        
+        // Use provided daysPaid or default to month days
+        if (daysPaid == null) {
+            daysPaid = LocalDate.of(year, month, 1).lengthOfMonth();
+        }
+        payroll.setDaysPaid(daysPaid);
 
         return payroll;
     }
@@ -257,6 +264,7 @@ public class EmployeePayrollServiceImpl implements EmployeePayrollService {
 
         dto.setTotalDeductions(totalDeductions);
         dto.setNetSalary(payroll.getNetSalary());
+        dto.setDaysPaid(payroll.getDaysPaid());
         dto.setGeneratedAt(payroll.getGeneratedAt());
 
         return dto;
@@ -324,7 +332,7 @@ public class EmployeePayrollServiceImpl implements EmployeePayrollService {
                         continue;
                     }
 
-                    EmployeePayroll payroll = calculatePayroll(employee, company, structure, config, currentMonth, currentYear);
+                    EmployeePayroll payroll = calculatePayroll(employee, company, structure, config, currentMonth, currentYear, null);
                     EmployeePayroll savedPayroll = employeePayrollRepository.save(payroll);
 
                     byte[] pdf = pdfGenerationService.generateSalarySlipPdf(savedPayroll);
@@ -347,5 +355,30 @@ public class EmployeePayrollServiceImpl implements EmployeePayrollService {
         }
 
         log.info("Payroll generation completed at {}", LocalDateTime.now());
-    }
-}
+        }
+
+        @Override
+        @Transactional
+        public void generateManualPayroll(ManualPayrollRequestDto request) {
+        log.info("Manual payroll generation for employee: {}", request.getEmployeeId());
+
+        Employee employee = employeeRepository.findById(request.getEmployeeId())
+                .orElseThrow(() -> new RuntimeException("Employee not found"));
+
+        Company company = companyRepository.findById(request.getCompanyId())
+                .orElseThrow(() -> new RuntimeException("Company not found"));
+
+        PayrollConfiguration config = payrollConfigurationRepository
+                .findByCompany_CompanyIdAndIsActiveTrue(request.getCompanyId())
+                .orElseThrow(() -> new RuntimeException("No active payroll configuration found"));
+
+        EmployeeSalaryStructure structure = employeeSalaryStructureRepository
+                .findByEmployee_EmployeeIdAndCompany_CompanyId(request.getEmployeeId(), request.getCompanyId())
+                .orElseThrow(() -> new RuntimeException("Salary structure not found"));
+
+        EmployeePayroll payroll = calculatePayroll(employee, company, structure, config, request.getMonth(), request.getYear(), request.getDaysPaid());
+        employeePayrollRepository.save(payroll);
+
+        log.info("Manual payroll generated successfully for {}", employee.getName());
+        }
+        }

@@ -1,6 +1,7 @@
 package com.karandev.paymaster.controller;
 
 import com.karandev.paymaster.dto.EmployeePayrollResponseDto;
+import com.karandev.paymaster.dto.ManualPayrollRequestDto;
 import com.karandev.paymaster.entity.EmployeePayroll;
 import com.karandev.paymaster.helper.PdfGenerationService;
 import com.karandev.paymaster.repository.EmployeePayrollRepository;
@@ -46,12 +47,11 @@ public class EmployeePayrollController {
 
         return ResponseEntity.ok(payrollList);
     }
-//
-//    @PostMapping("/generate")
-//    public ResponseEntity<String> generatePayrollManually(@RequestParam UUID companyId) throws IOException {
-//        employeePayrollService.generatePayrollForCompanyManually(companyId);
-//        return ResponseEntity.ok("Payroll generated successfully for company.");
-//    }
+    @PostMapping("/generate")
+    public ResponseEntity<String> generateManualPayroll(@RequestBody ManualPayrollRequestDto request) throws IOException {
+        employeePayrollService.generateManualPayroll(request);
+        return ResponseEntity.ok("Payroll generated successfully.");
+    }
 
     @GetMapping("/download/{payRollId}")
     public ResponseEntity<byte[]> downloadSalarySlip(@PathVariable UUID payRollId) {

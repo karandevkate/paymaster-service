@@ -17,6 +17,12 @@ public class EmployeeRequestDto {
     private String designation;
     private Gender gender;
     private LocalDate joiningDate;
+    private String pan;
+    private String bankName;
+    private String accountNumber;
+    private String esicNumber;
+    private String uanNumber;
+    private String location;
     private String password;
     private UUID companyId;
 }

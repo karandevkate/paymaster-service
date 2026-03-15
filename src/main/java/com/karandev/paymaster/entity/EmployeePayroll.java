@@ -72,6 +72,8 @@ public class EmployeePayroll {
     @Column(precision = 19, scale = 2)
     private BigDecimal netSalary;
 
+    private Integer daysPaid;
+
     private LocalDateTime generatedAt;
 
     private LocalDateTime createdAt;

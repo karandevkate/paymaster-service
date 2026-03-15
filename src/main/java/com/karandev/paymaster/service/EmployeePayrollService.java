@@ -1,6 +1,7 @@
 package com.karandev.paymaster.service;
 
 import com.karandev.paymaster.dto.EmployeePayrollResponseDto;
+import com.karandev.paymaster.dto.ManualPayrollRequestDto;
 import com.karandev.paymaster.dto.SalaryStructureRequestDto;
 
 import java.io.IOException;
@@ -13,5 +14,6 @@ public interface EmployeePayrollService {
     List<EmployeePayrollResponseDto> fetchEmployeePayrollByCompanyIdAndEmployeeID(UUID employeeID,UUID companyID);
 
     void createEmployeePayrollByCompanyId() throws IOException;
-//    void generatePayrollForCompanyManually(UUID companyId) throws IOException;
+    
+    void generateManualPayroll(ManualPayrollRequestDto request) throws IOException;
 }

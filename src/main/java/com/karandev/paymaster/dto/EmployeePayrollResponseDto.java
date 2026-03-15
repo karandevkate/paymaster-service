@@ -49,5 +49,7 @@ public class EmployeePayrollResponseDto {
     // --------------------- FINAL ---------------------
     private BigDecimal netSalary;           // Take-home salary
 
+    private Integer daysPaid;
+
     private LocalDateTime generatedAt;
 }

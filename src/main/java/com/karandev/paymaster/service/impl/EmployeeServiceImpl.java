@@ -52,6 +52,12 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee.setDesignation(dto.getDesignation());
         employee.setJoiningDate(dto.getJoiningDate());
         employee.setBirthdate(dto.getBirthdate());
+        employee.setPan(dto.getPan());
+        employee.setBankName(dto.getBankName());
+        employee.setAccountNumber(dto.getAccountNumber());
+        employee.setEsicNumber(dto.getEsicNumber());
+        employee.setUanNumber(dto.getUanNumber());
+        employee.setLocation(dto.getLocation());
         employee.setPassword(dto.getPassword());
         employee.setGender(dto.getGender() != null ? dto.getGender() : Gender.MALE);
         employee.setEmpCode(UniqueEmployeeCodeGenerator.generateEmpCode(company.getName()));
@@ -72,6 +78,12 @@ public class EmployeeServiceImpl implements EmployeeService {
         dto.setBirthdate(employee.getBirthdate());
         dto.setJoiningDate(employee.getJoiningDate());
         dto.setEmpcode(employee.getEmpCode());
+        dto.setPan(employee.getPan());
+        dto.setBankName(employee.getBankName());
+        dto.setAccountNumber(employee.getAccountNumber());
+        dto.setEsicNumber(employee.getEsicNumber());
+        dto.setUanNumber(employee.getUanNumber());
+        dto.setLocation(employee.getLocation());
         dto.setCompanyId(employee.getCompany() != null ? employee.getCompany().getCompanyId() : null);
         dto.setEmployeeStatus(employee.getStatus());
         dto.setGender(employee.getGender());
@@ -131,6 +143,12 @@ public class EmployeeServiceImpl implements EmployeeService {
         existing.setDesignation(dto.getDesignation());
         existing.setJoiningDate(dto.getJoiningDate());
         existing.setBirthdate(dto.getBirthdate());
+        existing.setPan(dto.getPan());
+        existing.setBankName(dto.getBankName());
+        existing.setAccountNumber(dto.getAccountNumber());
+        existing.setEsicNumber(dto.getEsicNumber());
+        existing.setUanNumber(dto.getUanNumber());
+        existing.setLocation(dto.getLocation());
 
         if (dto.getGender() != null) {
             existing.setGender(dto.getGender());
